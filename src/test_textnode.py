@@ -1,10 +1,15 @@
 import unittest
 
-from textnode import TextNode, TextType, text_node_to_html_node
+from textnode import TextNode, TextType
 from htmlnode import HTMLNode
 from htmlnode import LeafNode
 from htmlnode import ParentNode
 from stringparse import split_nodes_delimiter
+from stringparse import split_nodes_link
+from stringparse import split_nodes_image
+from stringparse import text_to_textnodes
+from stringparse import text_node_to_html_node
+from stringparse import markdown_to_blocks
 
 
 class TestTextNode(unittest.TestCase):
@@ -172,6 +177,245 @@ class TestTextNode(unittest.TestCase):
 
         exc_msg = str(derp.exception)
         self.assertEqual(exc_msg, "That's invalid Markdown syntax")        
+
+
+    def test_split_images(self):
+        node = TextNode(
+            "This is text with an ![image](https://i.imgur.com/zjjcJKZ.png) and another ![second image](https://i.imgur.com/3elNhQu.png)",
+            TextType.TEXT,
+            )
+        new_nodes = split_nodes_image([node])
+        self.assertListEqual(
+            [
+                TextNode("This is text with an ", TextType.TEXT),
+                TextNode("image", TextType.IMAGE, "https://i.imgur.com/zjjcJKZ.png"),
+                TextNode(" and another ", TextType.TEXT),
+                TextNode("second image", TextType.IMAGE, "https://i.imgur.com/3elNhQu.png"),
+            ],new_nodes,)
+
+
+    def test_split_links(self):
+        node = TextNode(
+            "This is text with a link [to boot dev](https://www.boot.dev) and [to youtube](https://www.youtube.com/@bootdotdev)",
+            TextType.TEXT,
+            )
+        
+        new_nodes = split_nodes_link([node])
+        self.assertListEqual(
+            [
+                TextNode("This is text with a link ", TextType.TEXT),
+                TextNode("to boot dev", TextType.LINK, "https://www.boot.dev"),
+                TextNode(" and ", TextType.TEXT),
+                TextNode("to youtube", TextType.LINK, "https://www.youtube.com/@bootdotdev"),
+            ],new_nodes,)
+
+
+    def test_split_images_one(self):
+        node = TextNode(
+            "This is text with an ![image](https://i.imgur.com/2.png)",
+            TextType.TEXT,
+            )
+        new_nodes = split_nodes_image([node])
+        self.assertListEqual(
+            [
+                TextNode("This is text with an ", TextType.TEXT),
+                TextNode("image", TextType.IMAGE, "https://i.imgur.com/2.png"),
+            ],new_nodes,)
+
+
+    def test_split_links_one(self):
+        node = TextNode(
+            "This is text with a link [L2](https://www.L2.com)",
+            TextType.TEXT,
+            )
+        
+        new_nodes = split_nodes_link([node])
+        self.assertListEqual(
+            [
+                TextNode("This is text with a link ", TextType.TEXT),
+                TextNode("L2", TextType.LINK, "https://www.L2.com"),
+            ],new_nodes,)
+
+    def test_split_images_fourx(self):
+        node = TextNode(
+            "This is text with an ![I3image](https://i.imgur.com/I3.png) and also ![I4image](https://i.imgur.com/I4.gif) and also ![I5image](https://i.imgur.com/I5.gif) and finally ![I6image](https://i.imgur.com/I6.png)",
+            TextType.TEXT,
+            )
+        new_nodes = split_nodes_image([node])
+        self.assertListEqual(
+            [
+                TextNode("This is text with an ", TextType.TEXT),
+                TextNode("I3image", TextType.IMAGE, "https://i.imgur.com/I3.png"),
+                TextNode(" and also ", TextType.TEXT),
+                TextNode("I4image", TextType.IMAGE, "https://i.imgur.com/I4.gif"),
+                TextNode(" and also ", TextType.TEXT),
+                TextNode("I5image", TextType.IMAGE, "https://i.imgur.com/I5.gif"),
+                TextNode(" and finally ", TextType.TEXT),
+                TextNode("I6image", TextType.IMAGE, "https://i.imgur.com/I6.png"),
+
+            ],new_nodes,)
+
+
+    def test_split_links_leftover_text(self):
+        node = TextNode(
+            "This is text with a link [to boot dev](https://www.boot.dev) and [to youtube](https://www.youtube.com/@bootdotdev) and more",
+            TextType.TEXT,
+            )
+        
+        new_nodes = split_nodes_link([node])
+        self.assertListEqual(
+            [
+                TextNode("This is text with a link ", TextType.TEXT),
+                TextNode("to boot dev", TextType.LINK, "https://www.boot.dev"),
+                TextNode(" and ", TextType.TEXT),
+                TextNode("to youtube", TextType.LINK, "https://www.youtube.com/@bootdotdev"),
+                TextNode(" and more", TextType.TEXT),
+            ],new_nodes,)
+
+    def test_to_textnode_initial(self):
+        text = "This is **text** with an _italic_ word and a `code block` and an ![obi wan image](https://i.imgur.com/fJRm4Vk.jpeg) and a [link](https://boot.dev)"
+
+        new_nodes = text_to_textnodes(text)        
+        self.assertListEqual(
+            [
+                TextNode("This is ", TextType.TEXT),
+                TextNode("text", TextType.BOLD),
+                TextNode(" with an ", TextType.TEXT),
+                TextNode("italic", TextType.ITALIC),
+                TextNode(" word and a ", TextType.TEXT),
+                TextNode("code block", TextType.CODE),
+                TextNode(" and an ", TextType.TEXT),
+                TextNode("obi wan image", TextType.IMAGE, "https://i.imgur.com/fJRm4Vk.jpeg"),
+                TextNode(" and a ", TextType.TEXT),
+                TextNode("link", TextType.LINK, "https://boot.dev"),
+            ], new_nodes,)
+
+
+# Test a string without any formatting
+    def test_plain_text(self):
+        input_text = "Just plain and simple text."
+        # expected output might be a single text node 
+        assert text_to_textnodes(input_text) == [TextNode("Just plain and simple text.", TextType.TEXT)]
+
+# Test combining multiple styles in one string
+    def test_combined_styles(self):
+        input_text = "**bold text** with _italic_ and a `code` block."
+        # expected range of nodes combining bold, italic, and code
+        assert text_to_textnodes(input_text) == [
+            TextNode("bold text", TextType.BOLD),
+            TextNode(" with ", TextType.TEXT),
+            TextNode("italic", TextType.ITALIC),
+            TextNode(" and a ", TextType.TEXT),
+            TextNode("code", TextType.CODE),
+            TextNode(" block.", TextType.TEXT)
+        ]
+
+# Test an empty string
+    def test_empty_string(self):
+        input_text = ""
+        # expected output is an empty list
+        assert text_to_textnodes(input_text) == []
+
+
+    # Test a single bold word
+    def test_single_bold(self):
+        input_text = "**bold**"
+        self.assertEqual(
+            text_to_textnodes(input_text),
+            [TextNode("bold", TextType.BOLD)]
+        )
+    
+    # Test a single italic word
+    def test_single_italic(self):
+        input_text = "_italic_"
+        self.assertEqual(
+            text_to_textnodes(input_text),
+            [TextNode("italic", TextType.ITALIC)]
+        )
+
+
+    def test_markdown_to_blocks(self):
+        md = """
+This is **bolded** paragraph
+
+This is another paragraph with _italic_ text and `code` here
+This is the same paragraph on a new line
+
+- This is a list
+- with items
+        """
+        blocks = markdown_to_blocks(md)
+        self.assertEqual(
+            blocks,
+            [
+                "This is **bolded** paragraph",
+                "This is another paragraph with _italic_ text and `code` here\nThis is the same paragraph on a new line",
+                "- This is a list\n- with items",
+            ],
+        )
+
+    def test_markdown_to_blocks_2(self):
+        md = """
+# This is a heading
+
+This is a paragraph of text. It has some **bold** and _italic_ words inside of it.
+
+- This is the first list item in a list block
+- This is a list item
+- This is another list item
+
+        """
+        blocks = markdown_to_blocks(md)
+        self.assertEqual(
+            blocks,
+            [
+                "# This is a heading",
+                "This is a paragraph of text. It has some **bold** and _italic_ words inside of it.",
+                "- This is the first list item in a list block\n- This is a list item\n- This is another list item",
+            ],
+        )
+
+    def test_markdown_to_blocks_empty(self):
+        md = ""
+
+        blocks = markdown_to_blocks(md)
+        self.assertEqual(blocks,[])
+
+
+    def test_markdown_to_blocks_tons_whitespace(self):
+        md = """
+This one has tons of whitespace 
+
+
+
+
+
+
+
+
+
+
+Like way too much
+
+
+
+
+
+
+
+And then for no reason, this
+and this 
+
+        """
+        blocks = markdown_to_blocks(md)
+        self.assertEqual(
+            blocks,
+            [
+                "This one has tons of whitespace",
+                "Like way too much",
+                "And then for no reason, this\nand this",
+            ],
+        )
 
 
 
