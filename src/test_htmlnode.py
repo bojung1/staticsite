@@ -18,14 +18,14 @@ class TestHTMLNode(unittest.TestCase):
 		self.assertEqual(node3, node4)
 
 	def test_props(self):
-		node5 = HTMLNode("<a>","superb", [], {"href": "https://www.google.com"})
-		node6 = HTMLNode("<a>","superb", [], {"href": "https://www.google.com"})
+		node5 = HTMLNode("a","superb", [], {"href": "https://www.google.com"})
+		node6 = HTMLNode("a","superb", [], {"href": "https://www.google.com"})
 
 		self.assertEqual(node5.props_to_html() , node6.props_to_html())
 
 	def test_repr(self):
-		node7 = HTMLNode("<p>","node78", [], {})
-		node8 = HTMLNode("<p>","node78", [], {})
+		node7 = HTMLNode("p","node78", [], {})
+		node8 = HTMLNode("p","node78", [], {})
 
 		self.assertEqual(repr(node7), repr(node8))
 
@@ -129,6 +129,7 @@ class TestHTMLNode(unittest.TestCase):
 		exc_msg = str(derp.exception)
 		self.assertEqual(exc_msg, "ParentNodes must have a tag and this doesn't") 
 
+
 	def test_to_kidless_parent(self):
 		with self.assertRaises(ValueError) as derp:
 			parent_node = ParentNode("assface", None)
@@ -136,6 +137,7 @@ class TestHTMLNode(unittest.TestCase):
 
 		exc_msg = str(derp.exception)
 		self.assertEqual(exc_msg, "Children of ParentNodes must have a value, and this doesn't")
+
 
 	def test_to_multi_prop_parent(self):
 		grandchild_node1 = LeafNode("butt2", "cheeks")

@@ -52,33 +52,33 @@ class TestTextNode(unittest.TestCase):
     def test_bold_n2h(self):
         node = TextNode("bold text", TextType.BOLD)
         html_node = text_node_to_html_node(node)
-        self.assertEqual(html_node.tag, "<b>")
+        self.assertEqual(html_node.tag, "b")
         self.assertEqual(html_node.value, "bold text")
 
 
     def test_italic_n2h(self):
         node = TextNode("italic text", TextType.ITALIC)
         html_node = text_node_to_html_node(node)
-        self.assertEqual(html_node.tag, "<i>")
+        self.assertEqual(html_node.tag, "i")
         self.assertEqual(html_node.value, "italic text")
 
     def test_code_n2h(self):
         node = TextNode("codey texty", TextType.CODE)
         html_node = text_node_to_html_node(node)
-        self.assertEqual(html_node.tag, "<code>")
+        self.assertEqual(html_node.tag, "code")
         self.assertEqual(html_node.value, "codey texty")
 
     def test_link_n2h(self):
         node = TextNode("a link to somewhere", TextType.LINK, "https://www.google.com")
         html_node = text_node_to_html_node(node)
-        self.assertEqual(html_node.tag, "<a>")
+        self.assertEqual(html_node.tag, "a")
         self.assertEqual(html_node.value, "a link to somewhere")
         self.assertEqual(html_node.props, {"href": "https://www.google.com"})
 
     def test_image_n2h(self):
         node = TextNode("fucing what", TextType.IMAGE, "https://www.imgur.com/A32587")
         html_node = text_node_to_html_node(node)
-        self.assertEqual(html_node.tag,"<img>")
+        self.assertEqual(html_node.tag,"img")
         self.assertEqual(html_node.value, "")
         self.assertEqual(html_node.props, {"src": "https://www.imgur.com/A32587", "alt": "fucing what"})
 
@@ -126,7 +126,7 @@ class TestTextNode(unittest.TestCase):
         self.assertEqual(new_nodes[3].text, "test 3b: ")
         self.assertEqual(new_nodes[3].text_type, TextType.TEXT) 
         self.assertEqual(new_nodes[4].text, "more code stuff")
-        self.assertEqual(new_nodes[4].text_type, TextType.CODE)        
+        self.assertEqual(new_nodes[4].text_type, TextType.CODE)  
 
         self.assertEqual(new_nodes[5].text, "test 3c: stupid prepend")
         self.assertEqual(new_nodes[5].text_type, TextType.CODE)
@@ -167,7 +167,7 @@ class TestTextNode(unittest.TestCase):
             new_nodes = split_nodes_delimiter(nodes, "&&", TextType.BOLD)
 
         exc_msg = str(derp.exception)
-        self.assertEqual(exc_msg, "no such delimiter, idiot")        
+        self.assertEqual(exc_msg, "no such delimiter, idiot")    
 
 
     def test_TN_spl_missing_one_delim(self):
@@ -176,7 +176,7 @@ class TestTextNode(unittest.TestCase):
             new_nodes = split_nodes_delimiter(nodes, "**", TextType.BOLD)
 
         exc_msg = str(derp.exception)
-        self.assertEqual(exc_msg, "That's invalid Markdown syntax")        
+        self.assertEqual(exc_msg, "That's invalid Markdown syntax")  
 
 
     def test_split_images(self):
@@ -275,7 +275,7 @@ class TestTextNode(unittest.TestCase):
     def test_to_textnode_initial(self):
         text = "This is **text** with an _italic_ word and a `code block` and an ![obi wan image](https://i.imgur.com/fJRm4Vk.jpeg) and a [link](https://boot.dev)"
 
-        new_nodes = text_to_textnodes(text)        
+        new_nodes = text_to_textnodes(text)  
         self.assertListEqual(
             [
                 TextNode("This is ", TextType.TEXT),

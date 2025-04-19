@@ -1,13 +1,28 @@
 
 class HTMLNode():
-	def __init__ (self, tag=None, value=None, children=None, props=None):
+	def __init__ (self, tag=None, value=None, props=None, children=None):
 		self.tag = tag
 		self.value = value
-		self.children = children
-		self.props = props
+		self.props = props or {}
+		self.children = children or []
+
 
 	def to_html(self):
-		raise NotImplementedError ("Not Implemented")
+		# Base case: Text-only node
+		if self.tag is None:
+			return self.text or ""
+        
+		# Step 1: Serialize attributes, if any
+		attr_string = " ".join(f'{key}="{value}"' for key, value in self.props.items())
+		if attr_string:
+			attr_string = " " + attr_string
+
+		# Step 2: Recursively get HTML for child nodes
+		child_html = "".join(child.to_html() for child in self.children)
+
+		# Step 3: Combine opening tag, children, and closing tag
+		return f"<{self.tag}{attr_string}>{self.value or ''}{child_html}</{self.tag}>"
+
 
 	def props_to_html(self):
 		outstr = ""
@@ -49,13 +64,15 @@ class LeafNode(HTMLNode):
 
 class ParentNode(HTMLNode):
 	def __init__ (self, tag, children, props=None):
+		if children is None:
+			raise ValueError ("Children of ParentNodes must have a value, and this doesn't")
 		super().__init__ (tag=tag, children=children, props=props)
 
 	def to_html(self):
 		if self.tag is None:
 			raise ValueError ("ParentNodes must have a tag and this doesn't")
 		if self.children is None:
-			raise ValueError (f"Children of ParentNodes must have a value, and this doesn't")
+			raise ValueError ("Children of ParentNodes must have a value, and this doesn't")
 
 		outnode = f"<{self.tag}"
 		
