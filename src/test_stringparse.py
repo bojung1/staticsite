@@ -1,4 +1,5 @@
 import unittest
+from main import extract_title
 
 from htmlnode import HTMLNode
 from htmlnode import LeafNode
@@ -27,6 +28,12 @@ class TestExtractRegex(unittest.TestCase):
 	def test_extract_md_bad_format_links(self):
 		matches = extract_markdown_links("This is text with an ![image]https://i.imgur.com/zjjcJKZ.png)")
 		self.assertListEqual([], matches)
+
+
+	def test_markdown_extract_title(self):
+		matches = extract_title("./content/index.md")
+		self.assertEqual("Tolkien Fan Club", matches)
+
 
 
 

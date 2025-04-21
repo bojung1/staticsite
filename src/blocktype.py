@@ -63,7 +63,9 @@ def block_to_block_type(md_block):
 # m2block is going to be a list of strings
 # block is going then be raw string blocks with markup in them
 
-TOKEN_PATTERN = re.compile(r'(\*\*|_|`|~{2})')  # Matches bold (**), italic (_), code (`), strikethrough (~~)
+#TOKEN_PATTERN = re.compile(r'(\*\*|_|`|~{2})')  # Matches bold (**), italic (_), code (`), strikethrough (~~)
+
+
 
 def markdown_to_html_node(markdown):
 	parent_node = HTMLNode("div", None, {}, [])
@@ -142,20 +144,140 @@ def markdown_to_html_node(markdown):
 				parent_node.children.append(outputnode)
 
 
+			case BlockType.IMAGE:
+				match = re.match(r'!\[([^\]]+)\]\(([^\)]+)\)', block)  # Regex for ![alt](src)
+				if match:
+					alt_text = match.group(1)
+					src = match.group(2)
+					img_node = HTMLNode("img", None, {"src": src, "alt": alt_text}, [])
+					parent_node.children.append(img_node)
+
+
+			case BlockType.LINK:
+				match = re.match(r'\[([^\]]+)\]\(([^\)]+)\)', block)  # Regex for [text](href)
+				if match:
+					link_text = match.group(1)
+					href = match.group(2)
+					text_node = HTMLNode("#text", link_text, {}, [])
+					a_node = HTMLNode("a", None, {"href": href}, [text_node])
+					parent_node.children.append(a_node)
+
+
 	return parent_node
 
 
+def is_indented(line):
+    # Check if a line is indented (has spaces or tabs at the beginning)
+    return line.startswith('  ') or line.startswith('\t')
 
+def get_indentation_level(line):
+    # Count leading spaces to determine indentation level
+    # We might say 2 spaces = 1 level
+    spaces = len(line) - len(line.lstrip(' '))
+    return spaces // 2  # Or whatever indentation scheme you use
+
+
+TOKEN_PATTERN = re.compile(
+	r'(\*\*.+?\*\*|_.+?_|\`.+?\`|~~.+?~~|!\[[^\]]*\]\([^)]+\)|\[[^\]]*\]\([^)]+\))'
+)
 
 
 def tokenize(markdown):
-			"""Split the markdown block into tokens of markdown tags and plain text."""
-			return [token for token in TOKEN_PATTERN.split(markdown) if token]
+	"""Split the markdown block into tokens of markdown tags and plain text."""
+	tokens = []
+	last_end = 0  # Keeps track of the last position in the string
+
+	for match in TOKEN_PATTERN.finditer(markdown):
+		start, end = match.span()
+
+		# Add plain text (if any) before this token
+		if last_end < start:
+			tokens.append(markdown[last_end:start])
+
+		# Add the matched token
+		tokens.append(match.group())
+
+		# Update position of last match
+		last_end = end
+
+	# Add any plain text remaining after the last token
+	if last_end < len(markdown):
+		tokens.append(markdown[last_end:])
+
+	return tokens
+
+
+def convert_token_to_html(token):
+	"""Convert individual Markdown tokens to their HTML representation."""
+	# Bold `**text**` or `__text__`
+	if token.startswith("**") and token.endswith("**"):
+		return f"<b>{token[2:-2]}</b>"
+
+	# Italic `_text_` or `*text*`
+	elif (token.startswith("_") and token.endswith("_")) or (token.startswith("*") and token.endswith("*")):
+		return f"<i>{token[1:-1]}</i>"
+
+	# Inline code `` `code` ``
+	elif token.startswith("`") and token.endswith("`"):
+		return f"<code>{token[1:-1]}</code>"
+
+	# Strikethrough `~~text~~`
+	elif token.startswith("~~") and token.endswith("~~"):
+		return f"<del>{token[2:-2]}</del>"
+
+	# Link `[text](url)`
+	elif token.startswith("[") and token.endswith(")"):
+		try:
+			text, url = token[1:].split("](", 1)
+			url = url[:-1]  # Remove the closing `)`
+			return f'<a href="{url}">{text}</a>'
+		except ValueError:
+			return token  # Return raw token if it doesn't match format
+
+	# Image `![alt](url)`
+	elif token.startswith("![") and token.endswith(")"):
+		try:
+			alt, url = token[2:].split("](", 1)
+			url = url[:-1]  # Remove the closing `)`
+			return f'<img src="{url}" alt="{alt}">'
+		except ValueError:
+			return token  # Return raw token if it doesn't match format
+
+	# If token doesn't match any pattern, return it as-is
+	return token
+
+
+def tokenize_and_convert_to_html(markdown):
+	"""Tokenize markdown and convert tokens to HTML."""
+	tokens = []
+	last_end = 0  # Keeps track of the last position in the string
+
+	# Iterate over all the regex matches
+	for match in TOKEN_PATTERN.finditer(markdown):
+		start, end = match.span()
+
+		# Add any plain text before the current token
+		if last_end < start:
+			tokens.append(markdown[last_end:start])
+
+		# Add the matched token (converted to HTML)
+		tokens.append(convert_token_to_html(match.group()))
+
+		# Update the last_end pointer
+		last_end = end
+
+	# Add any plain text remaining after the last token
+	if last_end < len(markdown):
+		tokens.append(markdown[last_end:])
+
+	return "".join(tokens)  # Join tokens back into a full HTML string
+
+
 
 def parse_inline_markdown(markdown):
 	"""
 	Parse a block of inline markdown and convert it into a tree-like structure.
-	Handles nested tags using a stack.
+	Handles nested tags, links, and images using a stack.
 	
 	Args:
 		markdown (str): The markdown string to parse.
@@ -164,12 +286,45 @@ def parse_inline_markdown(markdown):
 		dict: A tree-like structure representing the parsed markdown.
 	"""
 	tokens = tokenize(markdown)  # Split the markdown input into tokens
+
+	print("Tokens:", tokens)
+
 	stack = []  # Stack to track opened markdown tags
 	root = {"tag": None, "content": []}  # The top-level node
 	current_node = root  # Start at the top-level node
+
+	# Regex patterns for links and images
+	link_pattern = re.compile(r'\[([^\]]+)\]\(([^)]+)\)')
+	image_pattern = re.compile(r'!\[([^\]]+)\]\(([^)]+)\)')
 	
 	for token in tokens:
-		if token in {"**", "_", "`", "~~"}:
+		# Handle links
+		if link_pattern.match(token):
+			match = link_pattern.match(token)
+			print("Matched link:", match.groups())  # Debug link parsing
+			text = match.group(1)  # Link text
+			href = match.group(2)  # Link URL
+			link_node = {
+				"tag": "a", 
+				"content": [{"tag": None, "text": text}], 
+				"attributes": {"href": href}
+			}
+			current_node["content"].append(link_node)
+		
+		# Handle images
+		elif image_pattern.match(token):
+			match = image_pattern.match(token)
+			alt = match.group(1)  # Alt text
+			src = match.group(2)  # Image URL
+			image_node = {
+				"tag": "img", 
+				"content": [], 
+				"attributes": {"src": src, "alt": alt}
+			}
+			current_node["content"].append(image_node)
+
+		# Handle bold, italic, inline code, and strikethrough
+		elif token in {"**", "_", "`", "~~"}:
 			# Check if this is a closing tag for the current open tag
 			if stack and stack[-1]["tag"] == token:
 				# This is a closing tag - pop from stack
@@ -182,8 +337,9 @@ def parse_inline_markdown(markdown):
 				current_node["content"].append(new_node)
 				stack.append(new_node)
 				current_node = new_node
+		
+		# Handle plain text
 		else:
-			# Plain text - add to current node's content
 			current_node["content"].append({"tag": None, "text": token})
 	
 	# Handle any unclosed tags by popping them and moving back to root
@@ -195,65 +351,22 @@ def parse_inline_markdown(markdown):
 
 def text_to_children(markdown):
 	"""
-	Converts a block of inline markdown into a list of HTMLNode objects.
-
-	Args:
-		markdown (str): The inline Markdown string.
-
-	Returns:
-		list: A list of HTMLNode objects.
+	Convert a block of inline markdown to HTML nodes.
 	"""
-	# Step 1: Parse the inline markdown into a tree structure
-	tree = parse_inline_markdown(markdown)
-			
-	# Step 2: Recursively convert the tree-structure to list of HTMLNodes
-	def convert_tree_to_nodes(node):
-			# Base case: If plain text
-		if node["tag"] is None:
-			text_node = TextNode(node.get("text", ""), TextType.TEXT)
-			return text_node_to_html_node(text_node)
-			
-		# Otherwise, create an HTMLNode for the tag and process its children
-		children = [convert_tree_to_nodes(child) for child in node["content"]]
-		html_tag = {
-			"**": "b",  # Bold text
-			"_": "i",   # Italic text
-			"`": "code",  # Inline code
-			"~~": "del"  # Strikethrough
-		}.get(node["tag"], None)  # Map markdown tags to HTML tags
-		return HTMLNode(html_tag, None, {}, children)
-			
-	# Step 3: Process the root content into nodes
-	return [convert_tree_to_nodes(child) for child in tree["content"]]
+	# Use your existing tokenization and conversion
+	html_content = tokenize_and_convert_to_html(markdown)
+	
+	# Create a temporary parent node
+	parent = HTMLNode("div", None, {}, [])
+	
+	# Create text nodes for the HTML content
+	text_node = TextNode(html_content, TextType.TEXT)
+	parent.children.append(text_node_to_html_node(text_node))
+	
+	# Return the children of the parent
+	return parent.children
 
 
-def parse_markdown(markdown):
-			"""Parse markdown with nested tags using a stack."""
-			tokens = tokenize(markdown)
-			stack = []  # This will track currently open tags
-			root = {"tag": "div", "content": []}  # The top-level parent node
-			current_node = root  # Start with the root node
-
-			for token in tokens:
-				if token in {"**", "_", "`", "~~"}:  # Opening tag
-				# Push a new node for the tag onto the stack
-					new_node = {"tag": token, "content": []}
-					stack.append(new_node)
-					# Attach it to the current node's content
-					current_node["content"].append(new_node)
-					current_node = new_node  # Dive into the new node
-
-				elif token in {"**", "_", "`", "~~"} and stack and stack[-1]["tag"] == token:  # Closing tag
-					# Pop the top node from the stack as it's now closed
-					stack.pop()
-					# Move back up to the parent node
-					current_node = stack[-1] if stack else root
-
-				else:  # Plain text
-					# Add plain text to the current node's content
-					current_node["content"].append({"tag": None, "text": token})
-
-			return root
 
 
 

@@ -10,24 +10,32 @@ class HTMLNode():
 	def to_html(self):
 		# Base case: Text-only node
 		if self.tag is None:
-			return self.text or ""
-        
-		# Step 1: Serialize attributes, if any
+			return self.value or ""
+		
+		# Serialize attributes
 		attr_string = " ".join(f'{key}="{value}"' for key, value in self.props.items())
 		if attr_string:
 			attr_string = " " + attr_string
-
-		# Step 2: Recursively get HTML for child nodes
+		
+		# Handle self-closing tags like <img>
+		if self.tag in ["img", "br", "hr"]:  # Add other self-closing tags if needed
+			return f"<{self.tag}{attr_string} />"
+		
+		# Handle <a> tags for links
+		if self.tag == "a":
+			print("Processing link:", self)
+			child_html = "".join(child.to_html() for child in self.children)  # For nested children
+			return f"<{self.tag}{attr_string}>{child_html or self.value}</{self.tag}>"
+		
+		# Default case: Handle tags with children and value
 		child_html = "".join(child.to_html() for child in self.children)
-
-		# Step 3: Combine opening tag, children, and closing tag
 		return f"<{self.tag}{attr_string}>{self.value or ''}{child_html}</{self.tag}>"
 
 
 	def props_to_html(self):
 		outstr = ""
 		for key in self.props.keys():
-			outstr += f" {key}=\"props[key]\"" 
+			outstr += f' {key}="{self.props[key]}"'
 		return outstr 
 
 	def __repr__(self):
