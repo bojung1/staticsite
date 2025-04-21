@@ -3,6 +3,7 @@ from htmlnode import HTMLNode, LeafNode, ParentNode
 import os
 import shutil 
 import blocktype
+import sys 
 
 """
 class TextType(Enum):
@@ -61,7 +62,7 @@ def extract_title(markdown):
 
 
 ### This is now deprecated thanks to the recusrive version 
-def generate_page(from_path, template_path, dest_path):
+def generate_page(basepath, from_path, template_path, dest_path):
 	print(f"##### Generating page from {from_path} to {dest_path} using {template_path} #####")
 	with open(from_path, "r") as m:
 		mdfile = m.read()
@@ -90,10 +91,10 @@ def generate_page(from_path, template_path, dest_path):
 	with open(dest_path, "w") as i:
 		i.write(v3tmpl)
 
-
-def generate_pages_recursive(dir_path_content, template_path, dest_dir_path):
+#well i cheated a bit, and it was an honest misunderstanding, but i just rewrote the recursive code to copy of the regular function's
+#behaviour. Fuck it. 
+def generate_pages_recursive(bpath, dir_path_content, template_path, dest_dir_path):
 	print(f"##### Generating page(s) from {dir_path_content} to {dest_dir_path} using {template_path} #####")
-	print("#############################################################################################")
 	print("#############################################################################################")
 
 	if not os.path.exists(dest_dir_path):
@@ -112,7 +113,7 @@ def generate_pages_recursive(dir_path_content, template_path, dest_dir_path):
 		fullpaththing = dir_path_content + "/" + thing 
 		fulldestthing = dest_dir_path + "/" + thing 
 		if os.path.isdir(fullpaththing):
-			generate_pages_recursive(fullpaththing, template_path, fulldestthing)
+			generate_pages_recursive(bpath, fullpaththing, template_path, fulldestthing)
 
 		elif os.path.isfile(fullpaththing) and thing == "index.md":
 			print (f"Found a markdown file: {fullpaththing}")
@@ -127,6 +128,9 @@ def generate_pages_recursive(dir_path_content, template_path, dest_dir_path):
 			v2tmpl = tmplfile.replace("{{ Title }}", mdtitle)
 			v3tmpl = v2tmpl.replace("{{ Content }}", md_htmlstring)
 
+			v4tmpl = v3tmpl.replace('href="/','href="{basepath}')
+			v5tmpl = v4tmpl.replace('src="/','src="{basepath}')
+
 			if not os.path.exists(dest_dir_path):
 				print (f"%%%%%%%%%%%   WARNING: I had to create the dest directory {dest_dir_path}   %%%%%%%%%%%%%%%")
 				os.mkdir(dest_dir_path)
@@ -137,8 +141,17 @@ def generate_pages_recursive(dir_path_content, template_path, dest_dir_path):
 				ihtml.write(v3tmpl)
 
 def main():
-	copy_dir_stuff("./static", "./public")
-	generate_pages_recursive("./content","./template.html","./public")
+
+
+	if sys.argv[1] is None:
+		basepath = "/"
+	else: 
+		basepath = sys.argv[1]
+
+	#do we still need this? or are we uploading it? 
+	copy_dir_stuff("./static", "./docs")
+
+	generate_pages_recursive(basepath, "./content","./template.html","./docs")
 
 if __name__ == "__main__":
 	main()
