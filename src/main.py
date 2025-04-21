@@ -59,6 +59,8 @@ def extract_title(markdown):
 	return cleanh
 
 
+
+### This is now deprecated thanks to the recusrive version 
 def generate_page(from_path, template_path, dest_path):
 	print(f"##### Generating page from {from_path} to {dest_path} using {template_path} #####")
 	with open(from_path, "r") as m:
@@ -135,11 +137,7 @@ def generate_pages_recursive(dir_path_content, template_path, dest_dir_path):
 				ihtml.write(v3tmpl)
 
 def main():
-	#I forgot what this is doing here 
-	#derp = TextNode("derp", TextType.LINK, "https://www.boot.dev")
-
 	copy_dir_stuff("./static", "./public")
-	#generate_page("./content/index.md","./template.html","./public/index.html")
 	generate_pages_recursive("./content","./template.html","./public")
 
 if __name__ == "__main__":
