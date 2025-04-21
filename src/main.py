@@ -82,30 +82,65 @@ def generate_page(from_path, template_path, dest_path):
 	pdestcheck = dest_path.rstrip("/index.html")
 
 	if not os.path.exists(pdestcheck):
-		print (f"WARNING: I had to create the dest directory ${pdestcheck}")
+		print (f"WARNING: I had to create the dest directory {pdestcheck}")
 		os.mkdir(pdestcheck)
 
 	with open(dest_path, "w") as i:
 		i.write(v3tmpl)
-	
-	if not os.path.exists(dest_path):
-		raise Exception ("index file missing")
 
 
+def generate_pages_recursive(dir_path_content, template_path, dest_dir_path):
+	print(f"##### Generating page(s) from {dir_path_content} to {dest_dir_path} using {template_path} #####")
+	print("#############################################################################################")
+	print("#############################################################################################")
 
+	if not os.path.exists(dest_dir_path):
+		print (f"#### Creating DEST DIR #######")
+		os.mkdir(dest_dir_path)
 
+	with open(template_path, "r") as t:
+		tmplfile = t.read()
 
+	if not os.path.exists(dir_path_content):
+		raise Exception ("Source content path missing")
+	allthethings = os.listdir(path=dir_path_content)
+	print (f"I found this many things to parse in the source content path: {allthethings}")
 
+	for thing in allthethings:
+		fullpaththing = dir_path_content + "/" + thing 
+		fulldestthing = dest_dir_path + "/" + thing 
+		if os.path.isdir(fullpaththing):
+			generate_pages_recursive(fullpaththing, template_path, fulldestthing)
 
+		elif os.path.isfile(fullpaththing) and thing == "index.md":
+			print (f"Found a markdown file: {fullpaththing}")
 
+			with open(fullpaththing, "r") as imd:
+				mdfile = imd.read()
+
+			mdfile_htmlnode = blocktype.markdown_to_html_node(mdfile)
+			md_htmlstring = mdfile_htmlnode.to_html()
+			mdtitle = extract_title(fullpaththing)
+
+			v2tmpl = tmplfile.replace("{{ Title }}", mdtitle)
+			v3tmpl = v2tmpl.replace("{{ Content }}", md_htmlstring)
+
+			if not os.path.exists(dest_dir_path):
+				print (f"%%%%%%%%%%%   WARNING: I had to create the dest directory {dest_dir_path}   %%%%%%%%%%%%%%%")
+				os.mkdir(dest_dir_path)
+
+			towritefile = dest_dir_path + "/" + "index.html"
+			print (f"@@@@@@ Making a index.html file here in {towritefile} @@@@@@")
+			with open(towritefile, "w") as ihtml:
+				ihtml.write(v3tmpl)
 
 def main():
-	print ("hello world")
 	#I forgot what this is doing here 
 	#derp = TextNode("derp", TextType.LINK, "https://www.boot.dev")
 
 	copy_dir_stuff("./static", "./public")
-	generate_page("./content/index.md","./template.html","./public/index.html")
+	#generate_page("./content/index.md","./template.html","./public/index.html")
+	generate_pages_recursive("./content","./template.html","./public")
 
 if __name__ == "__main__":
 	main()
