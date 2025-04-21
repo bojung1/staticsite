@@ -128,8 +128,11 @@ def generate_pages_recursive(bpath, dir_path_content, template_path, dest_dir_pa
 			v2tmpl = tmplfile.replace("{{ Title }}", mdtitle)
 			v3tmpl = v2tmpl.replace("{{ Content }}", md_htmlstring)
 
-			v4tmpl = v3tmpl.replace('href="/','href="{basepath}')
-			v5tmpl = v4tmpl.replace('src="/','src="{basepath}')
+			print (f"******* REPLACING HREF AND SRC WITH {bpath} ***********")
+			replacehref = 'href="' + bpath
+			replacesrc = 'src="' + bpath 
+			v4tmpl = v3tmpl.replace('href="/', replacehref)
+			v5tmpl = v4tmpl.replace('src="/', replacesrc)
 
 			if not os.path.exists(dest_dir_path):
 				print (f"%%%%%%%%%%%   WARNING: I had to create the dest directory {dest_dir_path}   %%%%%%%%%%%%%%%")
@@ -138,13 +141,13 @@ def generate_pages_recursive(bpath, dir_path_content, template_path, dest_dir_pa
 			towritefile = dest_dir_path + "/" + "index.html"
 			print (f"@@@@@@ Making a index.html file here in {towritefile} @@@@@@")
 			with open(towritefile, "w") as ihtml:
-				ihtml.write(v3tmpl)
+				ihtml.write(v5tmpl)
 
 def main():
 
 	argcheck = len(sys.argv)
 	if argcheck <= 1: 
-		basepath = "./"
+		basepath = "/"
 	else: 
 		basepath = sys.argv[1]
 
